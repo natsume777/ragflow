@@ -15,18 +15,20 @@
 #
 
 import os
+from pathlib import Path
 
 PROJECT_BASE = os.getenv("RAG_PROJECT_BASE") or os.getenv("RAG_DEPLOY_BASE")
 
 def get_project_base_directory(*args):
     global PROJECT_BASE
     if PROJECT_BASE is None:
-        PROJECT_BASE = os.path.abspath(
-            os.path.join(
-                os.path.dirname(os.path.realpath(__file__)),
-                os.pardir,
-            )
-        )
+    #     PROJECT_BASE = os.path.abspath(
+    #         os.path.join(
+    #             os.path.dirname(os.path.realpath(__file__)),
+    #             os.pardir,
+    #         )
+    #     )
+        PROJECT_BASE = Path(__file__).resolve().parent.parent.as_posix()
 
     if args:
         return os.path.join(PROJECT_BASE, *args)

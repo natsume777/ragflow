@@ -58,39 +58,33 @@ if LOCK_KEY_pdfplumber not in sys.modules:
 
 @cached(cache=LRUCache(maxsize=10))
 def load_json_conf(conf_path):
-    if os.path.isabs(conf_path):
-        json_conf_path = conf_path
-    else:
-        json_conf_path = os.path.join(get_project_base_directory(), conf_path)
+    if not os.path.isabs(conf_path):
+        conf_path = os.path.join(get_project_base_directory(), conf_path)
     try:
-        with open(json_conf_path) as f:
+        with open(conf_path) as f:
             return json.load(f)
     except BaseException:
-        raise EnvironmentError("loading json file config from '{}' failed!".format(json_conf_path))
+        raise EnvironmentError("loading json file config from '{}' failed!".format(conf_path))
 
 
 def dump_json_conf(config_data, conf_path):
-    if os.path.isabs(conf_path):
-        json_conf_path = conf_path
-    else:
-        json_conf_path = os.path.join(get_project_base_directory(), conf_path)
+    if not os.path.isabs(conf_path):
+        conf_path = os.path.join(get_project_base_directory(), conf_path)
     try:
-        with open(json_conf_path, "w") as f:
+        with open(conf_path, "w") as f:
             json.dump(config_data, f, indent=4)
     except BaseException:
-        raise EnvironmentError("loading json file config from '{}' failed!".format(json_conf_path))
+        raise EnvironmentError("loading json file config from '{}' failed!".format(conf_path))
 
 
 def load_json_conf_real_time(conf_path):
-    if os.path.isabs(conf_path):
-        json_conf_path = conf_path
-    else:
-        json_conf_path = os.path.join(get_project_base_directory(), conf_path)
+    if not os.path.isabs(conf_path):
+        conf_path = os.path.join(get_project_base_directory(), conf_path)
     try:
-        with open(json_conf_path) as f:
+        with open(conf_path) as f:
             return json.load(f)
     except BaseException:
-        raise EnvironmentError("loading json file config from '{}' failed!".format(json_conf_path))
+        raise EnvironmentError("loading json file config from '{}' failed!".format(conf_path))
 
 
 def load_yaml_conf(conf_path):
@@ -142,21 +136,34 @@ def thumbnail_img(filename, blob):
     """
     MySQL LongText max length is 65535
     """
+    def get_page_image_bytes(page, resolution):
+        """将 pdfplumber 页面转为 PNG 字节流"""
+        pil_image = page.to_image(resolution=resolution).annotated.im  # 获取 PIL.Image
+        buf = BytesIO()
+        pil_image.save(buf, format="PNG")
+        return buf.getvalue()
+
     filename = filename.lower()
     if re.match(r".*\.pdf$", filename):
         with sys.modules[LOCK_KEY_pdfplumber]:
             pdf = pdfplumber.open(BytesIO(blob))
 
-            buffered = BytesIO()
+            # buffered = BytesIO()
             resolution = 32
             img = None
             for _ in range(10):
                 # https://github.com/jsvine/pdfplumber?tab=readme-ov-file#creating-a-pageimage-with-to_image
-                pdf.pages[0].to_image(resolution=resolution).annotated.save(buffered, format="png")
-                img = buffered.getvalue()
-                if len(img) >= 64000 and resolution >= 2:
-                    resolution = resolution / 2
-                    buffered = BytesIO()
+                # pdf.pages[0].to_image(resolution=resolution).annotated.save(buffered, format="png")
+                # img = buffered.getvalue()
+                # if len(img) >= 64000 and resolution >= 2:
+                #     resolution = resolution / 2
+                #     buffered = BytesIO()
+                # else:
+                #     break       
+                
+                img = get_page_image_bytes(pdf.pages[0], resolution)
+                if len(img) > 64000 and resolution >= 2:
+                    resolution /= 2
                 else:
                     break
         pdf.close()
